@@ -9,6 +9,9 @@
 const char *admin_id = "admin123";
 const char *admin_password = "pass123";
 
+#define PORT 8080
+#define MAX_BUFFER_SIZE 1024
+
 // Function to validate admin login
 int admin_login(int client_socket) {
     char buffer[1024] = {0};
@@ -36,5 +39,58 @@ int admin_login(int client_socket) {
     } else {
         send(client_socket, "Invalid login ID or password.\n", 31, 0);
         return 0;  // Login failure
+    }
+}
+
+// Function to display admin menu and handle admin functionalities
+void admin_menu(int client_socket) {
+    char buffer[MAX_BUFFER_SIZE];
+    int option;
+
+    while (1) {
+        // Display admin menu
+        char *admin_menu = 
+            "Admin Menu:\n"
+            "1. Add New Bank Employee\n"
+            "2. Modify Customer/Employee Details\n"
+            "3. Manage User Roles\n"
+            "4. Change Password\n"
+            "5. Logout\n"
+            "6. Exit\n"
+            "Choose an option: ";
+        
+        send(client_socket, admin_menu, strlen(admin_menu), 0);
+
+        // Read user choice
+        read(client_socket, buffer, MAX_BUFFER_SIZE);
+        option = atoi(buffer);
+
+        switch (option) {
+            case 1:
+                // Functionality for adding new bank employee
+                send(client_socket, "Add New Bank Employee functionality not implemented yet.\n", 56, 0);
+                break;
+            case 2:
+                // Functionality for modifying customer/employee details
+                send(client_socket, "Modify Customer/Employee Details functionality not implemented yet.\n", 68, 0);
+                break;
+            case 3:
+                // Functionality for managing user roles
+                send(client_socket, "Manage User Roles functionality not implemented yet.\n", 56, 0);
+                break;
+            case 4:
+                // Functionality for changing password
+                send(client_socket, "Change Password functionality not implemented yet.\n", 56, 0);
+                break;
+            case 5:
+                send(client_socket, "Logging out...\n", 16, 0);
+                return; // Exit the admin menu
+            case 6:
+                send(client_socket, "Exiting...\n", 12, 0);
+                exit(0); // Exit the server
+            default:
+                send(client_socket, "Invalid option. Please try again.\n", 36, 0);
+                break;
+        }
     }
 }

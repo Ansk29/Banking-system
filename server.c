@@ -16,10 +16,10 @@ void handle_client(int client_socket) {
     // Sending a welcome message and menu options to the client
     char *welcome_message = "Welcome to the Banking System!\n";
     char *menu = "Please select your role:\n1. Admin\n2. Customer\n3. Employee\n4. Manager\n";
-    
+
     send(client_socket, welcome_message, strlen(welcome_message), 0);
     send(client_socket, menu, strlen(menu), 0);
-    
+
     // Reading the role selection from the client
     valread = read(client_socket, buffer, MAX_BUFFER_SIZE);
     buffer[valread] = '\0'; // Null-terminate the string
@@ -29,8 +29,7 @@ void handle_client(int client_socket) {
     switch (user_choice) {
         case 1:  // Admin selected
             if (admin_login(client_socket)) {
-                // Admin functionality can be implemented here
-                send(client_socket, "Admin functionalities will be added here.\n", 42, 0);
+                admin_menu(client_socket); // Call the admin menu if login is successful
             }
             break;
         case 2:
