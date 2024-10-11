@@ -46,13 +46,12 @@ int main() {
         buffer[valread] = '\0'; // Null-terminate the string
         printf("%s", buffer); // Print the received message
 
-        // Input to send back to the server
-        if (strcmp(buffer, "Invalid choice. Please try again.\n") == 0 ||
-            strcmp(buffer, "You have chosen Employee.\n") == 0 ||
-            strcmp(buffer, "You have chosen Manager.\n") == 0) {
-            continue; // Skip if the last message was an error or confirmation
+        // Check if the server sent a message to logout and break the loop
+        if (strstr(buffer, "Logging out") != NULL) {
+            break;  // Exit the loop if the user logs out
         }
 
+        // Input to send back to the server
         char input[MAX_BUFFER_SIZE];
         fgets(input, sizeof(input), stdin);
         remove_newline(input); // Clean the input
@@ -61,5 +60,7 @@ int main() {
         send(sock, input, strlen(input), 0);
     }
 
+    // Close the socket after logout
+    close(sock);
     return 0;
 }
