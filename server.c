@@ -4,7 +4,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include "admin.h"  // Include the admin header
+#include "admin.h"   // Include the admin header
+#include "customer.h" // Include the customer header
 
 #define PORT 8080
 #define MAX_BUFFER_SIZE 1024
@@ -32,8 +33,10 @@ void handle_client(int client_socket) {
                 admin_menu(client_socket); // Call the admin menu if login is successful
             }
             break;
-        case 2:
-            send(client_socket, "You have chosen Customer.\n", 27, 0);
+        case 2:  // Customer selected
+            if (customer_login(client_socket)) {
+                customer_menu(client_socket); // Call the customer menu if login is successful
+            }
             break;
         case 3:
             send(client_socket, "You have chosen Employee.\n", 27, 0);
