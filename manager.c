@@ -12,11 +12,12 @@ typedef struct {
     int id;
     char username[MAX_LENGTH];
     char password[MAX_LENGTH];
-    float salary; // Example field for employee data
+    float salary;
 } Employee;
 
 Manager managers[MAX_MANAGERS]; // Array to hold manager data
 int managerCount = 0; // To keep track of the number of managers
+
 
 // Function to load managers from the text file
 void loadManagers() {
@@ -101,10 +102,10 @@ void manager_menu(int client_socket) {
             "Manager Menu:\n"
             "1. Activate/Deactivate Customer Accounts\n"
             "2. Assign Loan Applications to Employees\n"
-            "3. Review Customer Feedback\n"
-            "4. Change Password\n"
-            "5. Logout\n"
-            "6. Exit\n"
+            ""
+            "3. Change Password\n"
+            "4. Logout\n"
+            "5. Exit\n"
             "Choose an option: ";
         
         send(client_socket, manager_menu, strlen(manager_menu), 0);
@@ -120,17 +121,18 @@ void manager_menu(int client_socket) {
             case 2:
                 send(client_socket, "Assigning loan applications to employees...\n", 45, 0);
                 break;
+            /*case 3:
+                send(client_socket, "feedback...\n", 33, 0);
+                break;*/
             case 3:
-                send(client_socket, "Reviewing customer feedback...\n", 33, 0);
-                break;
-            case 4:
                 send(client_socket, "Changing password...\n", 21, 0);
+                //changePassword(manager_login(client_socket));
                 // Implement password change functionality if needed
                 break;
-            case 5:
+            case 4:
                 send(client_socket, "Logging out...\n", 16, 0);
                 return; // Exit the manager menu
-            case 6:
+            case 5:
                 send(client_socket, "Exiting...\n", 12, 0);
                 exit(0); // Exit the server
             default:

@@ -1,5 +1,7 @@
-1,jdoe,password123,50000.00
-2,asmith,password456,55000.00
+1,johny,johny123
+2,asmith,asmith456,55000.00
 3,bbrown,password789,60000.00
 4,ljones,password101,62000.00
 5,mgarcia,password202,58000.00
+6,karan2,karna456
+
