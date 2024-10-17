@@ -4,21 +4,17 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <sys/socket.h>
+#include"customer.h"
 
 #define MAX_BUFFER_SIZE 1024
 #define MAX_CUSTOMERS 100
 #define MAX_LENGTH 100
 
-typedef struct {
-    int id;
-    char username[MAX_LENGTH];
-    char password[MAX_LENGTH];
-    float balance;
-    
-} Customer;
 
 Customer customers[MAX_CUSTOMERS]; // Array to hold customer data
 int customerCount = 0; // To keep track of the number of customers
+
+
 
 // Function to load customers from the text file
 void loadCustomers() {
@@ -129,16 +125,56 @@ void transfer_funds(int client_socket, int customerIndex) {
 }
 
 // Function to apply for a loan
+
 void apply_loan(int client_socket, int customerIndex) {
     char buffer[MAX_BUFFER_SIZE];
     float loan_amount;
+    int loanID = 0; // Initialize loanID
+    FILE *file;
 
     // Get loan amount from the customer
     send(client_socket, "Enter loan amount: ", 19, 0);
     read(client_socket, buffer, MAX_BUFFER_SIZE);
     loan_amount = atof(buffer);
 
-    sprintf(buffer, "Loan application for $%.2f has been submitted.\n", loan_amount);
+    if (loan_amount <= 0) {
+        send(client_socket, "Invalid loan amount. Must be greater than zero.\n", 49, 0);
+        return;
+    }
+
+    // Generate a unique loan ID (based on the existing loan_request.txt file)
+    file = fopen("loan_request.txt", "r");
+    if (file) {
+        LoanRequest tempRequest;
+        while (fscanf(file, "%d,%d,%f,%s", &tempRequest.loanID, &tempRequest.customerId, &tempRequest.loanAmount, tempRequest.status) != EOF) {
+            if (tempRequest.loanID > loanID) {
+                loanID = tempRequest.loanID; // Keep track of the highest loan ID
+            }
+        }
+        fclose(file);
+    }
+    loanID++; // Increment for the new loan ID
+
+    // Create a new loan request
+    LoanRequest newRequest;
+    newRequest.loanID = loanID; // Assign the generated loanID
+    newRequest.customerId = customers[customerIndex].id; // Associate loan with the customer
+    newRequest.loanAmount = loan_amount;
+    strcpy(newRequest.status, "Pending"); // Default status is "Pending"
+
+    // Append the loan request to loan_request.txt
+    file = fopen("loan_request.txt", "a");
+    if (!file) {
+        send(client_socket, "Error: Unable to submit loan request.\n", 38, 0);
+        return;
+    }
+
+    // Write loan request to the file
+    fprintf(file, "%d,%d,%.2f,%s\n", newRequest.loanID, newRequest.customerId, newRequest.loanAmount, newRequest.status);
+    fclose(file);
+
+    // Inform the customer about the successful loan application
+    sprintf(buffer, "Loan application for $%.2f has been submitted with Loan ID: %d.\n", loan_amount, loanID);
     send(client_socket, buffer, strlen(buffer), 0);
 }
 

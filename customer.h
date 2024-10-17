@@ -12,6 +12,17 @@ typedef struct {
     float balance;  // Example field for customer balance
 } Customer;
 
+#define MAX_LENGTH 100
+
+typedef struct {
+    int loanID;               // Unique loan ID for each loan request
+    int customerId;           // Customer ID who requested the loan
+    float loanAmount;         // The amount of the loan requested
+    char status[MAX_LENGTH];  // Status of the loan (e.g., "Pending", "Assigned", "Approved", "Rejected")
+    char details[MAX_LENGTH]; // Additional details or description of the loan
+} LoanRequest;
+
+
 // Use extern to declare the variables so that they are not defined multiple times
 extern Customer customers[MAX_CUSTOMERS];
 extern int customerCount;

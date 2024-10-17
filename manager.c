@@ -1,23 +1,15 @@
 #include <stdio.h>
 #include <string.h>
-#include<stdlib.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include "manager.h"
+#include "customer.h"
 
 #define MAX_BUFFER_SIZE 1024
 #define MAX_MANAGERS 100
-#define MAX_LENGTH 100
-
-typedef struct {
-    int id;
-    char username[MAX_LENGTH];
-    char password[MAX_LENGTH];
-    float salary;
-} Employee;
 
 Manager managers[MAX_MANAGERS]; // Array to hold manager data
-int managerCount = 0; // To keep track of the number of managers
-
+int managerCount = 0; // This is the only definition of managerCount
 
 // Function to load managers from the text file
 void loadManagers() {
@@ -51,8 +43,120 @@ void saveManagers() {
     }
     fclose(file);
 }
-//manager
 
+void displayLoanRequests(int client_socket) {
+    FILE *file = fopen("loan_request.txt", "r");
+    if (!file) {
+        send(client_socket, "Error: Unable to open loan requests file.\n", 43, 0);
+        return;
+    }
+
+    char line[MAX_BUFFER_SIZE];
+    int hasRequests = 0;
+    char message[MAX_BUFFER_SIZE];
+
+    // Prepare message header
+    strcpy(message, "Available Loan Requests (LoanID, CustomerID, Amount, Status):\n");
+
+    // Read loan requests from the file
+    while (fgets(line, sizeof(line), file)) {
+        LoanRequest request;
+        // Assuming loan request format: loanID,customerID,loanAmount,status
+        sscanf(line, "%d,%d,%f,%[^\n]", &request.loanID, &request.customerId, &request.loanAmount, request.status);
+        
+        // Append the request details to the message
+        char requestDetails[MAX_BUFFER_SIZE];
+        snprintf(requestDetails, sizeof(requestDetails), "LoanID: %d, CustomerID: %d, Amount: %.2f, Status: %s\n",
+                 request.loanID, request.customerId, request.loanAmount, request.status);
+        
+        strcat(message, requestDetails); // Concatenate request details
+        hasRequests = 1; // Mark that at least one request is found
+    }
+
+    fclose(file);
+
+    if (!hasRequests) {
+        strcat(message, "No pending loan requests available.\n");
+    }
+
+    // Send the message back to the client
+    send(client_socket, message, strlen(message), 0);
+}
+
+void assignLoanToEmployee(int client_socket) {
+    FILE *requestFile = fopen("loan_request.txt", "r");
+    if (!requestFile) {
+        send(client_socket, "Error: Unable to open loan requests file.\n", 43, 0);
+        return;
+    }
+
+    char line[MAX_BUFFER_SIZE];
+    int loanID, employeeID;
+    int found = 0;
+
+    // Create a temporary file for updating loan requests
+    FILE *tempFile = fopen("temp_loan_requests.txt", "w");
+    if (!tempFile) {
+        send(client_socket, "Error: Unable to create temporary file.\n", 41, 0);
+        fclose(requestFile);
+        return;
+    }
+
+    // Display available loan requests
+    displayLoanRequests(client_socket);
+
+    // Request employee ID to assign the loan
+    send(client_socket, "Enter Employee ID to assign the loan: ", 38, 0);
+    read(client_socket, line, sizeof(line));
+    employeeID = atoi(line);
+
+    // Ask for the Loan ID to assign
+    send(client_socket, "Enter Loan ID to assign: ", 25, 0);
+    read(client_socket, line, sizeof(line));
+    loanID = atoi(line);
+
+    // Open loan assigned file for writing
+    FILE *assignedFile = fopen("loan_assigned.txt", "a");
+    if (!assignedFile) {
+        send(client_socket, "Error: Unable to open loan assigned file.\n", 44, 0);
+        fclose(tempFile);
+        fclose(requestFile);
+        return;
+    }
+
+    // Process loans
+    while (fgets(line, sizeof(line), requestFile)) {
+        LoanRequest request;
+        // Read loan request
+        sscanf(line, "%d,%d,%f,%[^\n]", &request.loanID, &request.customerId, &request.loanAmount, request.status);
+        
+        if (request.loanID == loanID) {
+            // Loan matches the one to assign
+            fprintf(assignedFile, "%d,%d,%.2f,Assigned to Employee ID %d\n", request.loanID, request.customerId, request.loanAmount, employeeID);
+            found = 1; // Mark that we found and assigned this loan
+        } else {
+            // Keep the loan in requests
+            fprintf(tempFile, "%d,%d,%.2f,%s\n", request.loanID, request.customerId, request.loanAmount, request.status);
+        }
+    }
+
+    fclose(requestFile);
+    fclose(tempFile);
+    fclose(assignedFile);
+
+    // Replace old request file with the updated one
+    remove("loan_request.txt");
+    rename("temp_loan_requests.txt", "loan_request.txt");
+
+    // Inform the user
+    if (found) {
+        snprintf(line, sizeof(line), "Loan ID %d assigned to Employee ID %d.\n", loanID, employeeID);
+    } else {
+        snprintf(line, sizeof(line), "Loan ID %d not found in requests.\n", loanID);
+    }
+    send(client_socket, line, strlen(line), 0);
+}
+// Manager login function
 int manager_login(int client_socket) {
     char buffer[MAX_BUFFER_SIZE] = {0};
     char login_username[MAX_BUFFER_SIZE] = {0};
@@ -102,7 +206,6 @@ void manager_menu(int client_socket) {
             "Manager Menu:\n"
             "1. Activate/Deactivate Customer Accounts\n"
             "2. Assign Loan Applications to Employees\n"
-            ""
             "3. Change Password\n"
             "4. Logout\n"
             "5. Exit\n"
@@ -119,14 +222,10 @@ void manager_menu(int client_socket) {
                 send(client_socket, "Activating/Deactivating customer accounts...\n", 45, 0);
                 break;
             case 2:
-                send(client_socket, "Assigning loan applications to employees...\n", 45, 0);
+                assignLoanToEmployee(client_socket);
                 break;
-            /*case 3:
-                send(client_socket, "feedback...\n", 33, 0);
-                break;*/
             case 3:
                 send(client_socket, "Changing password...\n", 21, 0);
-                //changePassword(manager_login(client_socket));
                 // Implement password change functionality if needed
                 break;
             case 4:
