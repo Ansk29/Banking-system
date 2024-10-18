@@ -132,7 +132,7 @@ void assignLoanToEmployee(int client_socket) {
         
         if (request.loanID == loanID) {
             // Loan matches the one to assign
-            fprintf(assignedFile, "%d,%d,%.2f,Assigned to Employee ID %d\n", request.loanID, request.customerId, request.loanAmount, employeeID);
+            fprintf(assignedFile, "%d,%d,%.2f,%d\n", request.loanID, request.customerId, request.loanAmount, employeeID);
             found = 1; // Mark that we found and assigned this loan
         } else {
             // Keep the loan in requests

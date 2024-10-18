@@ -114,37 +114,144 @@ void process_loan_applications(int client_socket) {
 // Function to approve/reject loans
 void approve_or_reject_loans(int client_socket) {
     char buffer[MAX_BUFFER_SIZE];
-    int customer_id;
+    int loan_id;
     char decision;
 
-    send(client_socket, "Enter customer ID to approve/reject loan: ", 42, 0);
-    read(client_socket, buffer, MAX_BUFFER_SIZE);
-    customer_id = atoi(buffer);
+    // Prompt for loan ID
+    send(client_socket, "Enter Loan ID to approve/reject: ", 33, 0);
+    int valread = read(client_socket, buffer, MAX_BUFFER_SIZE);
+    buffer[valread] = '\0';  // Null-terminate the string
+    loan_id = atoi(buffer);
 
-    // Find the customer by ID
-    for (int i = 0; i < customerCount; i++) {
-        if (customers[i].id == customer_id) {
+    // Open the loan file for reading
+    FILE *loan_file = fopen("loan_assigned.txt", "r");
+    if (!loan_file) {
+        send(client_socket, "Error: Could not open loan file.\n", 34, 0);
+        return;
+    }
+
+    // Open a temporary file to write updated information
+    FILE *temp_file = fopen("temp_loan.txt", "w");
+    if (!temp_file) {
+        send(client_socket, "Error: Could not create temporary file.\n", 40, 0);
+        fclose(loan_file);
+        return;
+    }
+
+    // Open the file to log processed loans
+    FILE *processed_loan_file = fopen("processed_loans.txt", "a");
+    if (!processed_loan_file) {
+        send(client_socket, "Error: Could not open processed loans file.\n", 44, 0);
+        fclose(loan_file);
+        fclose(temp_file);
+        return;
+    }
+
+    int found = 0;
+    char line[256];
+
+    // Read each line from the loan file
+    while (fgets(line, sizeof(line), loan_file)) {
+        int current_loan_id, customer_id, employee_id;
+        float loan_amount;
+        sscanf(line, "%d,%d,%f,%d", &current_loan_id, &customer_id, &loan_amount, &employee_id);
+
+        // If the loan ID matches, process the loan
+        if (current_loan_id == loan_id) {
+            found = 1;
+
+            // Prompt for approval or rejection
             send(client_socket, "Approve (A) or Reject (R) the loan? ", 36, 0);
-            read(client_socket, buffer, MAX_BUFFER_SIZE);
+            valread = read(client_socket, buffer, MAX_BUFFER_SIZE);
+            buffer[valread] = '\0';  // Null-terminate the string
             decision = buffer[0];
 
             if (decision == 'A' || decision == 'a') {
+                // Write "Approved" to processed loan file
+                fprintf(processed_loan_file, "%d,%d,%.2f,%d,Approved\n", current_loan_id, customer_id, loan_amount, employee_id);
                 send(client_socket, "Loan approved.\n", 15, 0);
-            } else {
+            } else if (decision == 'R' || decision == 'r') {
+                // Write "Rejected" to processed loan file
+                fprintf(processed_loan_file, "%d,%d,%.2f,%d,Rejected\n", current_loan_id, customer_id, loan_amount, employee_id);
                 send(client_socket, "Loan rejected.\n", 15, 0);
+            } else {
+                // If invalid decision, write the original line back
+                fprintf(temp_file, "%s", line);
+                send(client_socket, "Invalid choice. Loan decision canceled.\n", 41, 0);
             }
-            return;
+        } else {
+            // Copy the original line to the temp file for non-matching loans
+            fprintf(temp_file, "%s", line);
         }
     }
-    send(client_socket, "Customer ID not found.\n", 24, 0);
+
+    if (!found) {
+        send(client_socket, "Loan ID not found.\n", 20, 0);
+    }
+
+    // Close all files
+    fclose(loan_file);
+    fclose(temp_file);
+    fclose(processed_loan_file);
+
+    // Replace the old loan file with the updated temp file
+    if (found) {
+        remove("loan_assigned.txt");
+        rename("temp_loan.txt", "loan_assigned.txt");
+    } else {
+        // If loan ID was not found, delete the temp file
+        remove("temp_loan.txt");
+    }
 }
 
-// Function to view assigned loan applications
+//assigned loans
 void view_assigned_loan_applications(int client_socket) {
-    send(client_socket, "Displaying assigned loan applications is under development.\n", 60, 0);
+    char buffer[MAX_BUFFER_SIZE];
+    char line[256];
+    int employee_id, found = 0;
+
+    // Ask for employee ID input
+    send(client_socket, "Enter your Employee ID: ", 24, 0);
+    int valread = read(client_socket, buffer, MAX_BUFFER_SIZE);
+    buffer[valread] = '\0';  // Null-terminate the string
+    employee_id = atoi(buffer);  // Convert employee ID to integer
+
+    // Open the loan file to read assigned loans
+    FILE *loan_file = fopen("loan_assigned.txt", "r");
+    if (!loan_file) {
+        send(client_socket, "Error: Could not open loan file.\n", 34, 0);
+        return;
+    }
+
+    // Send the header for the assigned loans
+    send(client_socket, "Assigned Loan Applications:\nLoan ID | Customer ID | Amount \n", 57, 0);
+
+    // Read each line from the loan file
+    while (fgets(line, sizeof(line), loan_file)) {
+        int current_loan_id, customer_id, assigned_employee_id;
+        float loan_amount;
+
+        // Parse the line (loan ID, customer ID, loan amount, employee ID)
+        sscanf(line, "%d,%d,%f,%d", &current_loan_id, &customer_id, &loan_amount, &assigned_employee_id);
+
+        // If the employee ID matches, show the loan details
+        if (assigned_employee_id == employee_id) {
+            found = 1;
+            // Format the loan details to send to the employee
+            snprintf(buffer, sizeof(buffer), "%d | %d | %.2f\n", current_loan_id, customer_id, loan_amount);
+            send(client_socket, buffer, strlen(buffer), 0);
+        }
+    }
+
+    if (!found) {
+        send(client_socket, "No loans assigned to you.\n", 26, 0);
+    }
+
+    // Close the loan file
+    fclose(loan_file);
 }
 
-// Function to view customer transactions (passbook-like feature)
+// Function to view customer transactions 
 void view_customer_transactions(int client_socket) {
     send(client_socket, "Displaying customer transactions is under development.\n", 56, 0);
 }
@@ -271,12 +378,12 @@ void employee_menu(int client_socket, int employeeIndex) {
         char *menu = "Employee Menu:\n"
                      "1. Add New Customer\n"
                      "2. Modify Customer Details\n"
-                     "3. Process Loan Applications\n"
-                     "4. Approve/Reject Loans\n"
-                     "5. View Assigned Loan Applications\n"
-                     "6. View Customer Transactions\n"
-                     "7. Change Password\n"
-                     "8. Logout\n"
+                     
+                     "3. Approve/Reject Loans\n"
+                     "4. View Assigned Loan Applications\n"
+                     "5. View Customer Transactions\n"
+                     "6. Change Password\n"
+                     "7. Logout\n"
                      "Select an option: ";
         send(client_socket, menu, strlen(menu), 0);
 
@@ -293,22 +400,22 @@ void employee_menu(int client_socket, int employeeIndex) {
             case 2:
                 modify_customer_details(client_socket);
                 break;
-            case 3:
+            /*case 3:
                 process_loan_applications(client_socket);
-                break;
-            case 4:
+                break;*/
+            case 3:
                 approve_or_reject_loans(client_socket);
                 break;
-            case 5:
+            case 4:
                 view_assigned_loan_applications(client_socket);
                 break;
-            case 6:
+            case 5:
                 view_customer_transactions(client_socket);
                 break;
-            case 7:
+            case 6:
                 change_employee_password(client_socket, employeeIndex);
                 break;
-            case 8:
+            case 7:
                 employee_logout(client_socket);
                 return;  // Logout and return to main menu
             default:
