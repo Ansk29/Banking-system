@@ -71,6 +71,7 @@ void handle_client(int client_socket)
         }
         break;
     }
+    default:
         send(client_socket, "Invalid choice. Please try again.\n", 36, 0);
         break;
     }
@@ -123,11 +124,24 @@ int main()
 
         printf("Connection established with client.\n");
 
-        // Handling the client in the handle_client function
-        handle_client(new_socket);
-
-        // Close the connection with the current client
-        close(new_socket);
+        // Fork a new process to handle the client
+        pid_t pid = fork();
+        if (pid == 0) // Child process
+        {
+            // Handle the client in the child process
+            handle_client(new_socket);
+            close(new_socket);
+            exit(0); // Terminate the child process after handling the client
+        }
+        else if (pid > 0) // Parent process
+        {
+            close(new_socket); // Parent does not need this socket
+        }
+        else
+        {
+            perror("Fork failed");
+            close(new_socket);
+        }
     }
 
     return 0;
