@@ -163,8 +163,8 @@ void admin_menu(int client_socket) {
         char *admin_menu = 
             "Admin Menu:\n"
             "1. Add New Bank Employee\n"
-            "2. Modify Customer/Employee Details\n"
-            "3. Manage User Roles\n"
+            "2. Modify Employee Details\n"
+            "3. Add New Manager \n"
             "4. Change Password\n"
             "5. Logout\n"
             "6. Exit\n"

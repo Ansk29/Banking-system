@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "manager.h"
+#include <termios.h>
 #include "customer.h"
 
 #define MAX_BUFFER_SIZE 1024
@@ -10,6 +11,41 @@
 
 Manager managers[MAX_MANAGERS]; // Array to hold manager data
 int managerCount = 0; // This is the only definition of managerCount
+
+
+
+void get_password(char *password, int max_length) {
+    struct termios oldt, newt;
+    int i = 0;
+    char ch;
+
+    // Get the current terminal settings
+    tcgetattr(STDIN_FILENO, &oldt);
+    newt = oldt; // Copy old settings
+    newt.c_lflag &= ~(ICANON | ECHO); // Disable canonical mode and echo
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt); // Set new settings
+
+    while (1) {
+        ch = getchar(); // Get a character
+        if (ch == '\n') { // Enter key pressed
+            password[i] = '\0'; // Null-terminate the string
+            break;
+        } else if (ch == 127) { // Backspace key pressed (ASCII code 127)
+            if (i > 0) {
+                i--; // Move back in the password string
+                printf("\b \b"); // Erase the last character from the display
+            }
+        } else if (i < max_length - 1) { // Limit input length
+            password[i++] = ch; // Store the character
+            printf("*"); // Display an asterisk for each character
+        }
+    }
+
+    printf("\n");
+
+    // Restore old terminal settings
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+}
 
 // Function to load managers from the text file
 void loadManagers() {
@@ -172,21 +208,13 @@ int manager_login(int client_socket) {
     // Ask for manager password
     char *password_message = "Enter Manager Password: ";
     send(client_socket, password_message, strlen(password_message), 0);
-    valread = read(client_socket, buffer, MAX_BUFFER_SIZE);
-    buffer[valread] = '\0'; // Null-terminate the string
-    strcpy(password, buffer);
+    get_password(password, sizeof(password)); // Call the password input function
 
-    // Debugging output
-    printf("Login attempt: Username: '%s', Password: '%s'\n", login_username, password);
-
-    // Validate credentials
+    // Validate credentials (similar logic to customer and employee login)
     for (int i = 0; i < managerCount; i++) {
-        printf("Checking manager: Username: '%s', Password: '%s'\n", 
-               managers[i].username, 
-               managers[i].password); // Debugging line
         if (strcmp(managers[i].username, login_username) == 0 && 
             strcmp(managers[i].password, password) == 0) {
-            send(client_socket, "Login successful. Welcome Manager!\n", 36, 0);
+            send(client_socket, "Login successful. Welcome Manager!\n", 37, 0);
             return i;  // Return the index of the logged-in manager
         }
     }
