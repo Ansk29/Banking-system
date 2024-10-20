@@ -1,4 +1,4 @@
 1,ansh123,password123,2500.00
-2,janesmith456,newpass1236,2200.00
+2,ganesh,gan123,2200.00
 6,krishna,krishna123,3000.00
 4,klrahul,klr123,5700.00

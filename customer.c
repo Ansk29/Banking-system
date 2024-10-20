@@ -4,6 +4,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <sys/socket.h>
+#include <time.h>
 #include <sys/file.h>
 #include"customer.h"
 
@@ -14,6 +15,35 @@
 
 Customer customers[MAX_CUSTOMERS]; // Array store karne ko
 int customerCount = 0; // add wale mei use eaayega 
+
+
+typedef struct {
+    int transaction_id;
+    int customer_id;
+    char type[10];  // "Deposit", "Withdraw", "Transfer"
+    double amount;
+    char timestamp[20];  // e.g., "2024-10-20 15:30"
+} Transaction;
+
+
+void record_transaction(int customer_id, const char* type, double amount) {
+    FILE *file = fopen("transactions.txt", "a");
+    if (file == NULL) {
+        printf("Error opening transactions.txt file!\n");
+        return;
+    }
+
+    // Get current timestamp
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    char timestamp[20];
+    snprintf(timestamp, sizeof(timestamp), "%04d-%02d-%02d %02d:%02d:%02d", 
+             tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+    // Write transaction to file
+    fprintf(file, "%d, %s, %.2f, %s\n", customer_id, type, amount, timestamp);
+    fclose(file);
+}
 
 
 
@@ -180,7 +210,9 @@ void transfer_funds(int client_socket, int customerIndex) {
         // Perform the transfer
         customers[customerIndex].balance -= transfer_amount;
         customers[recipientIndex].balance += transfer_amount;
-
+        
+            record_transaction(customerIndex+1, "Transfer Out", transfer_amount);
+            record_transaction(recipient_id, "Transfer In", transfer_amount);
         // Inform the customer of the successful transfer
         sprintf(buffer, "Transfer successful! $%.2f has been sent to customer ID %d.\n", transfer_amount, recipient_id);
         send(client_socket, buffer, strlen(buffer), 0);
@@ -321,9 +353,89 @@ void add_feedback(int client_socket, int customerIndex) {
     send(client_socket, "Thank you for your feedback!\n", 30, 0);
 }
 
-// Function to view transaction history
-void view_transaction_history(int client_socket, int customerIndex) {
-    send(client_socket, "Displaying transaction history is under development.\n", 55, 0);
+
+/*
+void view_transaction_history(int client_socket, int customer_id) {
+    FILE *file = fopen("transactions.txt", "r");
+    if (file == NULL) {
+        send(client_socket, "Error opening transactions file.\n", 34, 0);
+        printf("Error opening transactions file.\n"); // Debugging
+        return;
+    }
+
+    char buffer[MAX_BUFFER_SIZE];
+    char line[256];
+    int trans_customer_id;
+    char trans_type[20];
+    float trans_amount;
+    char trans_timestamp[20];
+    int transactions_found = 0;
+
+    // Read each line from the transactions.txt file
+    while (fgets(line, sizeof(line), file)) {
+        printf("Raw Line: %s\n", line);  // Debugging - raw line
+
+        // Format: customer_id, type, amount, timestamp
+        sscanf(line, "%d, %[^,], %f, %s", &trans_customer_id, trans_type, &trans_amount, trans_timestamp);
+        printf("Parsed: ID=%d, Type=%s, Amount=%.2f, Timestamp=%s\n", trans_customer_id, trans_type, trans_amount, trans_timestamp);  // Debugging - parsed values
+
+        // If the transaction belongs to the requested customer
+        if (trans_customer_id == customer_id) {
+            transactions_found = 1;
+            // Format the transaction and send to the client
+            snprintf(buffer, sizeof(buffer), "Type: %s, Amount: $%.2f, Date: %s\n", trans_type, trans_amount, trans_timestamp);
+            send(client_socket, buffer, strlen(buffer), 0);
+        }
+    }
+
+    if (!transactions_found) {
+        send(client_socket, "No transactions found for this user.\n", 37, 0);
+    }
+
+    fclose(file);
+}
+*/
+void view_transaction_history(int client_socket, int customer_id) {
+    FILE *file = fopen("transactions.txt", "r");
+    if (file == NULL) {
+        send(client_socket, "Error opening transactions file.\n", 34, 0);
+        printf("Error opening transactions file.\n"); // Debugging
+        return;
+    }
+
+    char buffer[MAX_BUFFER_SIZE];
+    char line[256];
+    int trans_customer_id;
+    char trans_type[20];
+    float trans_amount;
+    char trans_timestamp[20];
+    int transactions_found = 0;
+
+    // Read each line from the transactions.txt file
+    while (fgets(line, sizeof(line), file)) {
+        printf("Raw Line: %s\n", line);  // Debugging - raw line
+
+        // Format: customer_id, type, amount, timestamp
+        sscanf(line, "%d, %[^,], %f, %s", &trans_customer_id, trans_type, &trans_amount, trans_timestamp);
+        printf("Parsed: ID=%d, Type=%s, Amount=%.2f, Timestamp=%s\n", trans_customer_id, trans_type, trans_amount, trans_timestamp);  // Debugging - parsed values
+
+        // If the transaction belongs to the requested customer
+        if (trans_customer_id == customer_id) {
+            transactions_found = 1;
+            // Format the transaction with a newline at the end
+            snprintf(buffer, sizeof(buffer), "Type: %s, Amount: $%.2f, Date: %s\n", trans_type, trans_amount, trans_timestamp);
+            send(client_socket, buffer, strlen(buffer), 0);
+        }
+    }
+
+    if (!transactions_found) {
+        send(client_socket, "No transactions found for this user.\n", 37, 0);
+    }
+
+    // Send a final message indicating the end of the transaction history
+    send(client_socket, "End of transaction history.\n", 29, 0);
+
+    fclose(file);
 }
 
 // Function to display customer menu and handle customer functionalities
@@ -369,6 +481,7 @@ void customer_menu(int client_socket, int customerIndex) {
                 read(client_socket, buffer, MAX_BUFFER_SIZE);
                 deposit_amount = atof(buffer);
                 customers[customerIndex].balance += deposit_amount;
+                record_transaction(customerIndex+1, "Deposit", deposit_amount);
                 sprintf(buffer, "You have successfully deposited: $%.2f\n", deposit_amount);
                 send(client_socket, buffer, strlen(buffer), 0);
                 saveCustomers();  
@@ -383,6 +496,7 @@ void customer_menu(int client_socket, int customerIndex) {
                     send(client_socket, "Insufficient balance for this withdrawal.\n", 43, 0);
                 } else {
                     customers[customerIndex].balance -= withdraw_amount;
+                    record_transaction(customerIndex+1, "Withdraw", withdraw_amount);
                     sprintf(buffer, "You have successfully withdrawn: $%.2f\n", withdraw_amount);
                     send(client_socket, buffer, strlen(buffer), 0);
                     saveCustomers();
@@ -402,7 +516,7 @@ void customer_menu(int client_socket, int customerIndex) {
                 add_feedback(client_socket, customerIndex);
                 break;
             case 8:
-                view_transaction_history(client_socket, customerIndex);
+                view_transaction_history(client_socket, customers[customerIndex].id);
                 break;
             case 9:
                 send(client_socket, "Logging out...\n", 15, 0);

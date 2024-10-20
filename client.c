@@ -8,6 +8,8 @@
 #define PORT 8080
 #define MAX_BUFFER_SIZE 1024
 
+
+/*error aara tha program hang toh ye uske liye add kara tha */
 // Function to remove newline character from user input
 void remove_newline(char *str) {
     str[strcspn(str, "\n")] = '\0';  // Removes the first newline character if found
@@ -18,7 +20,7 @@ int main() {
     struct sockaddr_in serv_addr;
     char buffer[MAX_BUFFER_SIZE] = {0};
 
-    // Create socket
+    // Creating socker 
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         printf("\n Socket creation error \n");
         return -1;
