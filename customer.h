@@ -9,21 +9,21 @@ typedef struct {
     int id;
     char username[MAX_LENGTH];
     char password[MAX_LENGTH];
-    float balance;  // Example field for customer balance
+    float balance;  
 } Customer;
 
 #define MAX_LENGTH 100
 
 typedef struct {
-    int loanID;               // Unique loan ID for each loan request
-    int customerId;           // Customer ID who requested the loan
-    float loanAmount;         // The amount of the loan requested
-    char status[MAX_LENGTH];  // Status of the loan (e.g., "Pending", "Assigned", "Approved", "Rejected")
-    char details[MAX_LENGTH]; // Additional details or description of the loan
+    int loanID;               
+    int customerId;           
+    float loanAmount;         
+    char status[MAX_LENGTH];  //  "Pending", "Assigned", "Approved", "Rejected"
+    char details[MAX_LENGTH]; // Additional details 
 } LoanRequest;
 
 
-// Use extern to declare the variables so that they are not defined multiple times
+// Use akro extern to declare the variables toh vo not defined multiple times
 extern Customer customers[MAX_CUSTOMERS];
 extern int customerCount;
 

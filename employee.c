@@ -14,7 +14,7 @@ typedef struct
     int id;
     char username[MAX_LENGTH];
     char password[MAX_LENGTH];
-    float salary; // Example field for employee data
+    float salary; 
 } Employee;
 
 #define MAX_BUFFER_SIZE 1024
@@ -26,6 +26,14 @@ extern void loadCustomers(); // This will be from customer.c
 extern void saveCustomers(); // To save updated customer data
 
 // Function to add a new customer
+
+/* customer add karna he toh 
+Struct ka variable  banao 
+prompt send karo 
+recieve karo sari info 
+hamara load customer wale mei se jo index he last wala 
+us index pe ye value ko dal do
+information savee kar do*/
 void add_new_customer(int client_socket)
 {
     char buffer[MAX_BUFFER_SIZE];
@@ -55,7 +63,14 @@ void add_new_customer(int client_socket)
     send(client_socket, "New customer added successfully.\n", 33, 0);
 }
 
-// Function to modify customer details
+/*modify details 
+buffer and variables bana 
+promptt send kar ki kis ka id change karna he 
+
+for loop laag search kar us index wale customer ko 
+prompts send karo read karo and store karo ek ek kar ke change karte jao 
+save kardo data ko
+*/
 void modify_customer_details(int client_socket)
 {
     char buffer[MAX_BUFFER_SIZE];
@@ -279,14 +294,14 @@ void view_assigned_loan_applications(int client_socket)
     fclose(loan_file);
 }
 
-// Function to view customer transactions
+/*abhi nhi implement kara*/
 void view_customer_transactions(int client_socket)
 {
     send(client_socket, "Displaying customer transactions is under development.\n", 56, 0);
 }
 
 // Function to change employee password
-// Function to change employee password
+/*same jesa customer ke side par kara tha vesa logic*/
 void change_employee_password(int client_socket, int employeeIndex)
 {
     char buffer[MAX_BUFFER_SIZE];
@@ -321,13 +336,14 @@ void change_employee_password(int client_socket, int employeeIndex)
     send(client_socket, "Password successfully changed.\n", 32, 0);
 }
 
-// Logout function for employees
+// Logout
 void employee_logout(int client_socket)
 {
     send(client_socket, "Logging out...\n", 16, 0);
 }
 
 // Function to load employees from the text file
+/* same customer jesa*/
 void loadEmployees()
 {
     FILE *file = fopen("employees.txt", "r");
@@ -350,6 +366,7 @@ void loadEmployees()
 }
 
 // Function to save employees to the text file
+/* same customer jesa*/
 void saveEmployees()
 {
     FILE *file = fopen("employees.txt", "w");
@@ -368,6 +385,7 @@ void saveEmployees()
 }
 
 // Function to validate employee login
+
 int employee_login(int client_socket)
 {
     char buffer[MAX_BUFFER_SIZE] = {0};
@@ -388,7 +406,7 @@ int employee_login(int client_socket)
     buffer[valread] = '\0'; // Null-terminate the string
     strcpy(password, buffer);
 
-    // Print debug information
+    
     printf("Login attempt: Username: '%s', Password: '%s'\n", login_username, password);
 
     // Validate credentials by checking the loaded data

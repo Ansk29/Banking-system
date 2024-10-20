@@ -4,6 +4,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <sys/socket.h>
+#include <sys/file.h>
 #include"customer.h"
 
 #define MAX_BUFFER_SIZE 1024
@@ -11,12 +12,14 @@
 #define MAX_LENGTH 100
 
 
-Customer customers[MAX_CUSTOMERS]; // Array to hold customer data
-int customerCount = 0; // To keep track of the number of customers
+Customer customers[MAX_CUSTOMERS]; // Array store karne ko
+int customerCount = 0; // add wale mei use eaayega 
+
 
 
 
 // Function to load customers from the text file
+/*jo data file mei se nikal ke structure ke array mein store kar liya he */
 void loadCustomers() {
     FILE *file = fopen("customers.txt", "r");
     if (!file) {
@@ -36,6 +39,8 @@ void loadCustomers() {
 }
 
 // Function to save customers to the text file
+
+/* save kar do details ek for loop lagakar hamare isme fprintf sara data*/
 void saveCustomers() {
     FILE *file = fopen("customers.txt", "w");
     if (!file) {
@@ -51,6 +56,26 @@ void saveCustomers() {
 }
 
 // Function to validate customer login
+
+// Function to validate customer login
+
+/*buffer banao 
+variable banao 
+msg send karo olgin id 
+read karo 
+
+password send karo
+read karo
+store karo
+
+for loop lagao har se check karo 
+a)login id = username
+b)password = password
+
+mila koi index aisa toh send karo success 
+varna failure message send kar do;
+
+ */
 int customer_login(int client_socket) {
     char buffer[MAX_BUFFER_SIZE] = {0};
     char login_username[MAX_BUFFER_SIZE] = {0};
@@ -84,6 +109,25 @@ int customer_login(int client_socket) {
 }
 
 // Function to handle fund transfer
+
+// Function to handle fund transfer
+/*Fund transfer karna he  
+variables banao required 
+send karo prompt recipient ka id
+read karo data 
+
+ab check karna hoga ki recipient he ki nahi 
+agar nahi he toh return kar do bhai not found 
+agar he toh 
+waps prompt send karo ki kitna amount transfer 
+read karo response ko 
+
+amount ko integer mei convert 
+checks lagao 
+customer ke index mein se fund remove kar do aur reciver ke amount mein add kar do
+save kar do haamra update*/
+
+
 void transfer_funds(int client_socket, int customerIndex) {
     char buffer[MAX_BUFFER_SIZE];
     int recipient_id;
@@ -93,6 +137,20 @@ void transfer_funds(int client_socket, int customerIndex) {
     send(client_socket, "Enter recipient customer ID: ", 29, 0);
     read(client_socket, buffer, MAX_BUFFER_SIZE);
     recipient_id = atoi(buffer);
+
+    // Open the customer file for locking
+    FILE *file = fopen("customers.txt", "r+"); // Open in read/write mode
+    if (!file) {
+        send(client_socket, "Error accessing customer data.\n", 31, 0);
+        return;
+    }
+
+    // Apply exclusive lock to the file
+    if (flock(fileno(file), LOCK_EX) != 0) {
+        send(client_socket, "Unable to lock file.\n", 22, 0);
+        fclose(file);
+        return;
+    }
 
     // Find the recipient customer
     int recipientIndex = -1;
@@ -105,6 +163,9 @@ void transfer_funds(int client_socket, int customerIndex) {
 
     if (recipientIndex == -1) {
         send(client_socket, "Invalid customer ID.\n", 21, 0);
+        // Unlock the file before returning
+        flock(fileno(file), LOCK_UN);
+        fclose(file);
         return;
     }
 
@@ -116,12 +177,21 @@ void transfer_funds(int client_socket, int customerIndex) {
     if (transfer_amount > customers[customerIndex].balance) {
         send(client_socket, "Insufficient balance for transfer.\n", 35, 0);
     } else {
+        // Perform the transfer
         customers[customerIndex].balance -= transfer_amount;
         customers[recipientIndex].balance += transfer_amount;
+
+        // Inform the customer of the successful transfer
         sprintf(buffer, "Transfer successful! $%.2f has been sent to customer ID %d.\n", transfer_amount, recipient_id);
         send(client_socket, buffer, strlen(buffer), 0);
-        saveCustomers();
+
+        // Save updated customer data to the file
+        saveCustomers(); // Assuming this writes to CUSTOMER_FILE
     }
+
+    // Unlock the file after the transfer
+    flock(fileno(file), LOCK_UN);
+    fclose(file);
 }
 
 // Function to apply for a loan
@@ -178,7 +248,23 @@ void apply_loan(int client_socket, int customerIndex) {
     send(client_socket, buffer, strlen(buffer), 0);
 }
 
+
 // Function to change password
+/* 
+buffer banaya ;
+do variable banana 
+old password ka prompt send karo
+read karo user ka data 
+usko string mei copy karo ek 
+ab is string ko compare karenge purane password se agr match ni hua toh incorrecr
+if matched 
+send karo promt new password ka
+read karo user ka input 
+
+usko buffer mei se newpass wale string mei copy kar lo ;
+ab is new password ko humko file mei add karna he 
+hamara jo structure banaay he usko access kar ke;
+*/
 void change_password(int client_socket, int customerIndex) {
     char buffer[MAX_BUFFER_SIZE];
     char old_password[MAX_BUFFER_SIZE];
@@ -207,6 +293,15 @@ void change_password(int client_socket, int customerIndex) {
 }
 
 // Function to add feedback
+
+/* buffer banaya 
+    client ko ek prompt send karvaya
+    read kara client ka response 
+    file open karna hoga feedback ka append mode
+    us feedback ko fprintf kar dena 
+    file ko close kar dena
+    
+    ek end mei prompt send kar dena ki send ho gaya */
 void add_feedback(int client_socket, int customerIndex) {
     char buffer[MAX_BUFFER_SIZE];
     
@@ -232,6 +327,14 @@ void view_transaction_history(int client_socket, int customerIndex) {
 }
 
 // Function to display customer menu and handle customer functionalities
+
+/*socket and index as the jo identify karvata he us user ko 
+while(1) logout nhi karna jb tak vo chahta nahi
+customer menu banaya aur send kara 
+read kara client resposne 
+convert karo int mei
+switch case lagao 
+us function ko call karo */
 void customer_menu(int client_socket, int customerIndex) {
     char buffer[MAX_BUFFER_SIZE];
     int option;
